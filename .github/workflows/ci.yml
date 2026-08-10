@@ -46,22 +46,20 @@ jobs:
         run: docker build --tag day12-chat:${{ github.sha }} .
 
   deploy:
-    name: Deploy to Railway
+    name: Verify Railway auto-deploy
     runs-on: ubuntu-latest
     needs: [test, build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 8
     env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      PRODUCTION_URL: ${{ secrets.PRODUCTION_URL || 'https://day12-chat-production-813a.up.railway.app' }}
     steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-      - name: Install Railway CLI
-        run: npm install --global @railway/cli
-      - name: Deploy production
+      - name: Wait for Railway auto-deploy
+        run: sleep 45
+      - name: Verify production health
         run: >-
-          railway up
-          --project f5950202-677c-4067-bdf6-d6450b28f8f6
-          --environment production
-          --service day12-chat
-          --detach
-          --message "GitHub Actions ${{ github.sha }}"
+          curl --fail --show-error
+          --retry 20
+          --retry-delay 15
+          --retry-all-errors
+          "${PRODUCTION_URL}/healthz"
